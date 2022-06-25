@@ -5,6 +5,8 @@ Shader "Custom/dissolve"
         _MainTex ("Albedo (RGB)", 2D) = "white" {}
         _NoiseTex ("NoiseTex", 2D) = "white" {} // 노이즈 텍스쳐를 받기 위한 인터페이스 추가
         _Cut ("Alpha Cut", Range(0, 1)) = 0 // alpha 를 숨길지 말지를 결정할 기준값을 받는 인터페이스 추가
+        [HDR]_OutColor ("OutColor", Color) = (1, 1, 1, 1) // HDR 색상(1보다 크거나 0보다 큰 색상값)을 받는 인터페이스 추가
+        _OutlineThickness ("0utlineThickness", Range(1, 1.5)) = 1.15 // 기준값을 얼만큼 늘릴것인지 (늘리는 만큼 테두리 영역이 늘어남) 결정하는 값을 받는 인터페이스 추가
     }
     SubShader
     {
@@ -17,6 +19,8 @@ Shader "Custom/dissolve"
         sampler2D _MainTex;
         sampler2D _NoiseTex; // 노이즈 텍스쳐를 담는 샘플러 변수 선언
         float _Cut; // 노이즈 텍스쳐 샘플링 값과 비교하여 alpha 를 숨길지 말지를 결정할 기준값
+        float4 _OutColor; // Bloom 효과를 위해 받는 HDR 색상값
+        float _OutlineThickness; // 기준값애 곱해서 기준값을 늘리는 값 (늘리는 만큼 테두리 영역이 늘어남)
 
         struct Input
         {
@@ -41,9 +45,9 @@ Shader "Custom/dissolve"
 
             // 이번엔 기준값을 좀 더 키워서 (즉, 기준값보다 큰 영역을 좀 더 줄여서~) 안쪽은 검정색, 바깥쪽은 흰색으로 칠해봄.
             float color; // 책에서는 outline 이라는 변수명을 사용했지만, color 라고 이름짓는게 좀 더 직관적이고 이해가 쉬움.
-            if (noise.r >= _Cut * 1.15) color = 0; // 증가된 기준값을 통과하는 영역은 검정색
+            if (noise.r >= _Cut * _OutlineThickness) color = 0; // 증가된 기준값을 통과하는 영역은 검정색
             else color = 1; // 증가된 기준값을 통과하지 못하는 영역은 흰색 (이미 _Cut 기준값을 통과하지 못한 영역은 투명해지므로, 나머지 영역 중 1.15배 만큼 증가한 영역만이 흰색으로 찍히겠지. 색상은 1.15배 증가한 기준값을 사용하니까!)
-            o.Albedo = color;
+            o.Emission = color * _OutColor.rgb; // HDR 컬러에 기준값에 따라 0 또는 1이 할당된 color값을 곱함으로써 1이 찍힌 영역만 Emission 을 HDR Bloom 효과를 내며 렌더할 수 있도록 함.
         }
         ENDCG
     }
